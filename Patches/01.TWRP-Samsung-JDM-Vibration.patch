@@ -1,13 +1,17 @@
-commit f9cbd0b59b9309c6fec9283bb3496b5d5a9df7de
+commit 4e6a33cbfcf4ab944050e214a8f0109c11d1d2ef
 Author: ravindu644 <droidcasts@protonmail.com>
-Date:   Fri Oct 10 21:16:04 2025 +0000
+Date:   Sat Dec 6 14:26:56 2025 +0530
 
-    Haptics: TWRP: Initial support for Newer Samsung JDM Devices
+    [1/2] Haptics: TWRP: Initial support for Newer Samsung JDM Devices [v2]
+
+    BoardConfig variables:
+        TW_USE_SAMSUNG_JDM_HAPTICS
+        TW_JDM_HAPTICS_PATH
     
     Signed-off-by: ravindu644 <droidcasts@protonmail.com>
 
 diff --git a/bootable/recovery/minuitwrp/events.cpp b/bootable/recovery/minuitwrp/events.cpp
-index e497df6..fa20c5c 100644
+index e497df62f9..3a1fce7492 100644
 --- a/bootable/recovery/minuitwrp/events.cpp
 +++ b/bootable/recovery/minuitwrp/events.cpp
 @@ -31,6 +31,11 @@
@@ -22,15 +26,20 @@ index e497df6..fa20c5c 100644
  #ifdef USE_QTI_HAPTICS
  #include <android/hardware/vibrator/1.2/IVibrator.h>
  #endif
-@@ -63,6 +68,7 @@ static std::atomic_int vib_on_count = 0;
- 
+@@ -64,6 +69,12 @@ static std::atomic_int vib_on_count = 0;
  #define LEDS_HAPTICS_DURATION_FILE	"/sys/class/leds/vibrator/duration"
  #define LEDS_HAPTICS_ACTIVATE_FILE	"/sys/class/leds/vibrator/activate"
-+#define SAMSUNG_JDM_HAPTICS_FILE   "/sys/class/leds/vibrator/brightness"
  
++#ifdef TW_JDM_HAPTICS_PATH
++#define SAMSUNG_JDM_HAPTICS_FILE   TW_JDM_HAPTICS_PATH
++#else
++#define SAMSUNG_JDM_HAPTICS_FILE   "/sys/class/leds/vibrator/brightness"
++#endif
++
  #ifndef SYN_REPORT
  #define SYN_REPORT          0x00
-@@ -181,6 +187,42 @@ int vibrate(int timeout_ms)
+ #endif
+@@ -181,6 +192,50 @@ int vibrate(int timeout_ms)
      if (std::ifstream(VIBRATOR_TIMEOUT_FILE).good()) {
          write_to_file(VIBRATOR_TIMEOUT_FILE, tout);
      }
@@ -51,9 +60,16 @@ index e497df6..fa20c5c 100644
 +                if (strength_pct == 0)
 +                    return;
 +
-+                // Scale the 0-100% value to the 0-255 range for the brightness file
-+                int intensity = (strength_pct * 255) / 100;
-+                if (intensity > 255) intensity = 255;
++                // Get max vibration intensity from build config (default to 255 if not defined)
++#ifdef TW_MAX_VIBRATION_INTENSITY
++                int max_intensity = TW_MAX_VIBRATION_INTENSITY;
++#else
++                int max_intensity = 255;
++#endif
++
++                // Scale the 0-100% value to the 0-max_intensity range for the brightness file
++                int intensity = (strength_pct * max_intensity) / 100;
++                if (intensity > max_intensity) intensity = max_intensity;
 +                if (intensity < 1 && strength_pct > 0) intensity = 1; // Ensure it vibrates if not explicitly 0
 +
 +                std::string intensity_str = std::to_string(intensity);
@@ -70,48 +86,55 @@ index e497df6..fa20c5c 100644
 +            }
 +        }
 +    }).detach();
++
  #else
      if (std::ifstream(LEDS_HAPTICS_ACTIVATE_FILE).good()) {
          write_to_file(LEDS_HAPTICS_DURATION_FILE, tout);
 diff --git a/vendor/twrp/build/soong/Android.bp b/vendor/twrp/build/soong/Android.bp
-index 36f0427..948290b 100644
+index 36f0427d2b..846794f9f8 100644
 --- a/vendor/twrp/build/soong/Android.bp
 +++ b/vendor/twrp/build/soong/Android.bp
-@@ -195,6 +195,7 @@ soong_config_module_type {
+@@ -195,6 +195,8 @@ soong_config_module_type {
          "tw_exclude_nano",
          "tw_support_input_aidl_haptics",
          "tw_support_input_aidl_haptics_fix_off",
 +        "tw_use_samsung_jdm_haptics",
++        "tw_jdm_haptics_path",
          "tw_use_samsung_haptics",
  ],
      properties: ["cflags"],
-@@ -305,6 +306,9 @@ twrp {
+@@ -305,6 +307,12 @@ twrp {
          tw_support_input_aidl_haptics_fix_off: {
               cflags: ["-DUSE_QTI_AIDL_HAPTICS_FIX_OFF"]
          },
 +        tw_use_samsung_jdm_haptics: {
 +              cflags: ["-DUSE_SAMSUNG_JDM_HAPTICS"]
-+        },        
++        },
++        tw_jdm_haptics_path: {
++             cflags: ["-DTW_JDM_HAPTICS_PATH=\"%s\""]
++        },
          tw_use_samsung_haptics: {
               cflags: ["-DUSE_SAMSUNG_HAPTICS"]
          },
 diff --git a/vendor/twrp/config/BoardConfigSoong.mk b/vendor/twrp/config/BoardConfigSoong.mk
-index 87cd458..dc2f2e6 100644
+index 87cd458355..f8a4437f8d 100644
 --- a/vendor/twrp/config/BoardConfigSoong.mk
 +++ b/vendor/twrp/config/BoardConfigSoong.mk
-@@ -90,6 +90,7 @@ SOONG_CONFIG_twrpGlobalVars += \
+@@ -90,6 +90,8 @@ SOONG_CONFIG_twrpGlobalVars += \
      tw_support_input_aidl_haptics \
      tw_support_input_aidl_haptics_fqname \
      tw_support_input_aidl_haptics_fix_off \
 +    tw_use_samsung_jdm_haptics \
++    tw_jdm_haptics_path \
      tw_use_samsung_haptics \
      tw_brightness_path \
      tw_max_brightness
-@@ -152,6 +153,7 @@ SOONG_CONFIG_twrpGlobalVars_tw_exclude_nano := $(TW_EXCLUDE_NANO)
+@@ -152,6 +154,8 @@ SOONG_CONFIG_twrpGlobalVars_tw_exclude_nano := $(TW_EXCLUDE_NANO)
  SOONG_CONFIG_twrpGlobalVars_tw_support_input_aidl_haptics := $(TW_SUPPORT_INPUT_AIDL_HAPTICS)
  SOONG_CONFIG_twrpGlobalVars_tw_support_input_aidl_haptics_fqname := $(subst ",, $(TW_SUPPORT_INPUT_AIDL_HAPTICS_FQNAME))
  SOONG_CONFIG_twrpGlobalVars_tw_support_input_aidl_haptics_fix_off := $(TW_SUPPORT_INPUT_AIDL_HAPTICS_FIX_OFF)
 +SOONG_CONFIG_twrpGlobalVars_tw_use_samsung_jdm_haptics := $(TW_USE_SAMSUNG_JDM_HAPTICS)
++SOONG_CONFIG_twrpGlobalVars_tw_jdm_haptics_path := $(subst ",, $(TW_JDM_HAPTICS_PATH))
  SOONG_CONFIG_twrpGlobalVars_tw_use_samsung_haptics := $(TW_USE_SAMSUNG_HAPTICS)
  SOONG_CONFIG_twrpGlobalVars_tw_brightness_path := $(subst ",, $(TW_BRIGHTNESS_PATH))
  ifneq ($(TW_NO_SCREEN_BLANK),)
