@@ -28,7 +28,7 @@
 #<src>                              <mnt_point>       <type>        <mnt_flags and options>      <fs_mgr_flags>
 # Logical f2fs partitions
 system                              /system           f2fs          ro,barrier=1,discard         wait,logical,first_stage_mount
-systen_dlkm                         /system_dlkm      f2fs          ro,barrier=1,discard         wait,logical,first_stage_mount
+system_dlkm                         /system_dlkm      f2fs          ro,barrier=1,discard         wait,logical,first_stage_mount
 system_ext                          /system_ext       f2fs          ro,barrier=1,discard         wait,logical,first_stage_mount
 vendor                              /vendor           f2fs          ro,barrier=1,discard         wait,logical,first_stage_mount
 vendor_dlkm                         /vendor_dlkm      f2fs          ro,barrier=1,discard         wait,logical,first_stage_mount
@@ -37,7 +37,7 @@ odm                                 /odm              f2fs          ro,barrier=1
 
 # Logical ext4 partitions
 system                              /system           ext4          ro,barrier=1,discard         wait,logical,first_stage_mount
-systen_dlkm                         /system_dlkm      ext4          ro,barrier=1,discard         wait,logical,first_stage_mount
+system_dlkm                         /system_dlkm      ext4          ro,barrier=1,discard         wait,logical,first_stage_mount
 system_ext                          /system_ext       ext4          ro,barrier=1,discard         wait,logical,first_stage_mount
 vendor                              /vendor           ext4          ro,barrier=1,discard         wait,logical,first_stage_mount
 vendor_dlkm                         /vendor_dlkm      ext4          ro,barrier=1,discard         wait,logical,first_stage_mount
@@ -46,7 +46,7 @@ odm                                 /odm              ext4          ro,barrier=1
 
 # Logical erofs partitions
 system                              /system           erofs         ro,barrier=1,discard         wait,logical,first_stage_mount
-systen_dlkm                         /system_dlkm      erofs         ro,barrier=1,discard         wait,logical,first_stage_mount
+system_dlkm                         /system_dlkm      erofs         ro,barrier=1,discard         wait,logical,first_stage_mount
 system_ext                          /system_ext       erofs         ro,barrier=1,discard         wait,logical,first_stage_mount
 vendor                              /vendor           erofs         ro,barrier=1,discard         wait,logical,first_stage_mount
 vendor_dlkm                         /vendor_dlkm      erofs         ro,barrier=1,discard         wait,logical,first_stage_mount
