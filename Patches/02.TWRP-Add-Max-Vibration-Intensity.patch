@@ -1,0 +1,86 @@
+commit 6cb81eb54f814bd9836e04669240f649627c7776
+Author: ravindu644 <droidcasts@protonmail.com>
+Date:   Sat Dec 6 14:37:18 2025 +0530
+
+    [2/2] Haptics: Implement Max Vibration intensity in TWRP 12.1
+
+    BoardConfig variable: TW_MAX_VIBRATION_INTENSITY
+    
+    Signed-off-by: ravindu644 <droidcasts@protonmail.com>
+
+diff --git a/bootable/recovery/gui/slidervalue.cpp b/bootable/recovery/gui/slidervalue.cpp
+index 8deb9e081e..ce121e81de 100755
+--- a/bootable/recovery/gui/slidervalue.cpp
++++ b/bootable/recovery/gui/slidervalue.cpp
+@@ -135,6 +135,20 @@ GUISliderValue::GUISliderValue(xml_node<>* node) : GUIObject(node)
+ 			mMax = atoi(mMaxStr.c_str());
+ 		}
+ 
++		// Clamp vibration slider max values to TW_MAX_VIBRATION_INTENSITY if defined
++		if (!mVariable.empty() && (
++			mVariable == "tw_button_vibrate" ||
++			mVariable == "tw_keyboard_vibrate" ||
++			mVariable == "tw_action_vibrate"))
++		{
++#ifdef TW_MAX_VIBRATION_INTENSITY
++			if (mMax > TW_MAX_VIBRATION_INTENSITY) {
++				mMax = TW_MAX_VIBRATION_INTENSITY;
++				mMaxStr = std::to_string(mMax);
++			}
++#endif
++		}
++
+ 		if (mMin > mMax)
+ 			mMin = mMax;
+ 
+diff --git a/vendor/twrp/build/soong/Android.bp b/vendor/twrp/build/soong/Android.bp
+index 846794f9f8..29bb95c347 100644
+--- a/vendor/twrp/build/soong/Android.bp
++++ b/vendor/twrp/build/soong/Android.bp
+@@ -198,6 +198,7 @@ soong_config_module_type {
+         "tw_use_samsung_jdm_haptics",
+         "tw_jdm_haptics_path",
+         "tw_use_samsung_haptics",
++        "tw_max_vibration_intensity",
+ ],
+     properties: ["cflags"],
+ }
+@@ -322,5 +323,8 @@ twrp {
+         tw_max_brightness: {
+             cflags: ["-DTW_MAX_BRIGHTNESS=%s"]
+         },
++        tw_max_vibration_intensity: {
++            cflags: ["-DTW_MAX_VIBRATION_INTENSITY=%s"]
++        },
+     },
+ }
+diff --git a/vendor/twrp/config/BoardConfigSoong.mk b/vendor/twrp/config/BoardConfigSoong.mk
+index f8a4437f8d..2fa4a8abb6 100644
+--- a/vendor/twrp/config/BoardConfigSoong.mk
++++ b/vendor/twrp/config/BoardConfigSoong.mk
+@@ -94,7 +94,8 @@ SOONG_CONFIG_twrpGlobalVars += \
+     tw_jdm_haptics_path \
+     tw_use_samsung_haptics \
+     tw_brightness_path \
+-    tw_max_brightness
++    tw_max_brightness \
++    tw_max_vibration_intensity
+ 
+ ifeq ($(TARGET_HW_DISK_ENCRYPTION),true)
+ SOONG_CONFIG_twrpGlobalVars += \
+@@ -112,6 +113,7 @@ TW_H_OFFSET ?= 0
+ TW_DELAY_TOUCH_INIT_MS ?= 0
+ TW_FRAMERATE ?= 30
+ TW_SUPPORT_INPUT_AIDL_HAPTICS_FQNAME ?= IVibrator/default
++TW_MAX_VIBRATION_INTENSITY ?= 255
+ 
+ # Soong bool variables
+ SOONG_CONFIG_twrpGlobalVars_legacy_hw_disk_encryption := $(TARGET_LEGACY_HW_DISK_ENCRYPTION)
+@@ -165,6 +167,7 @@ ifneq ($(TW_NO_SCREEN_BLANK),)
+   endif
+ endif
+ SOONG_CONFIG_twrpGlobalVars_tw_max_brightness := $(TW_MAX_BRIGHTNESS)
++SOONG_CONFIG_twrpGlobalVars_tw_max_vibration_intensity := $(TW_MAX_VIBRATION_INTENSITY)
+ 
+ ifneq ($(TARGET_CRYPTFS_HW_PATH),)
+   SOONG_CONFIG_twrpGlobalVars_hw_fde_cryptfs_hw_header_lib_name := //$(TARGET_CRYPTFS_HW_PATH):libcryptfs_hw_headers
